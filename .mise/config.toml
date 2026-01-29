@@ -1,0 +1,86 @@
+#### Settings ####
+[settings]
+windows_default_file_shell_args = "powershell.exe -Command"
+windows_default_inline_shell_args = "powershell.exe -Command"
+unix_default_file_shell_args = "pwsh"
+unix_default_inline_shell_args = "pwsh -Command"
+
+[settings.pipx]
+uvx = true
+
+[settings.npm]
+package_manager = "bun"
+
+#### Tools ####
+[tools]
+powershell = "7"
+python = "3.14"
+uv = "latest"
+node = "latest"
+bun = "latest"
+rust = { version = "1.93", profile = "minimal", components = "rustfmt,clippy" }
+prek = "latest"
+"pipx:checkov" = "latest"
+"github:koalaman/shellcheck" = "latest"
+hadolint = "latest"
+actionlint = "latest"
+
+#### Tasks ####
+
+[tasks.bun-install]
+description = "Install dependencies with Bun"
+run = "bun install"
+
+[tasks.cargo-fetch]
+description = "Fetch Cargo dependencies"
+run = "cargo fetch"
+
+[tasks.prek-install]
+description = "Install pre-commit hooks"
+run = "prek install"
+
+[tasks.install]
+depends = ["bun-install", "cargo-fetch", "prek-install"]
+
+[tasks.setup]
+description = "Setup the various tools and dependencies"
+depends = ["install"]
+
+[tasks.shellcheck]
+description = "Run Shellcheck"
+run = "shellcheck"
+
+[tasks.hadolint]
+description = "Run Hadolint"
+run = "hadolint"
+
+[tasks.actionlint]
+description = "Run Actionlint"
+run = "actionlint"
+
+[tasks.markdownlint-fix-all]
+description = "Run Markdownlint"
+run = "bunx markdownlint-cli2 --fix ."
+
+[tasks.checkov]
+description = "Run Checkov"
+run = "checkov"
+
+[tasks.rust-fmt-all]
+description = "Run Rust formatting with rustfmt"
+run = "cargo fmt --all -- --check"
+
+[tasks.rust-clippy-all]
+description = "Run Clippy linter"
+run = "cargo clippy --all-targets --all-features -- -Dwarnings"
+
+[tasks.prettier-write-all]
+description = "Run Prettier to write all files"
+run = "bunx prettier --write ."
+
+[tasks.format]
+alias = ["fmt"]
+depends = ["rust-fmt-all", "prettier-write-all"]
+
+[tasks.lint]
+run = "prek run -a"

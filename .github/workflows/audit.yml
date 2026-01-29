@@ -1,0 +1,21 @@
+name: Audit
+
+run-name: Audit
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  prek-check-all-files:
+    name: Prek (pre-commit) check all files
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v3
+      - run: mise run setup
+      - run: mise run lint

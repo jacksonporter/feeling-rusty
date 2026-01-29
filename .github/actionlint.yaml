@@ -1,0 +1,20 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+
+# Self-hosted runner labels (if you use self-hosted runners)
+# self-hosted-runner:
+#   labels:
+#     - linux.2xlarge
+#     - windows-latest-xl
+
+# Config variables defined in your repo/org (enables strict checking)
+# config-variables:
+#   - DEFAULT_RUNNER
+#   - JOB_NAME
+
+# Path-specific settings
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    # Ignore specific errors by regex on the error message
+    # ignore:
+    #   - 'shellcheck reported issue in this script: SC2086:.+'

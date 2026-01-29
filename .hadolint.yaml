@@ -1,0 +1,15 @@
+# hadolint config - https://github.com/hadolint/hadolint#configure
+
+# Exit with failure only when rules at or above this severity are violated
+failure-threshold: info
+
+# Trusted registries for FROM instructions (no warning when using these)
+trustedRegistries:
+  - docker.io
+  - ghcr.io
+  - public.ecr.aws
+
+# Rules to ignore project-wide (add DL/SC codes as needed)
+# ignored:
+#   - DL3008   # Pin versions in apt-get install
+#   - SC1091   # Not following: file not found

@@ -1,0 +1,9 @@
+# Checkov configuration
+# https://www.checkov.io/
+
+# Scan the current directory (default)
+directory: .
+
+# Output
+compact: true
+quiet: false
