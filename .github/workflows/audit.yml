@@ -10,6 +10,9 @@ on:
     branches:
       - main
 
+env:
+  MISE_ENV: ci
+
 jobs:
   prek-check-all-files:
     name: Prek (pre-commit) check all files
@@ -19,3 +22,5 @@ jobs:
       - uses: jdx/mise-action@v3
       - run: mise run setup
       - run: mise run lint
+        env:
+          SKIP: "no-commit-to-branch"
