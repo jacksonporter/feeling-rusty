@@ -21,9 +21,12 @@ bun = "latest"
 rust = { version = "1.93", profile = "default" }
 prek = "latest"
 "pipx:checkov" = "latest"
-"github:koalaman/shellcheck" = "latest"
 hadolint = "latest"
 actionlint = "latest"
+
+[tools."github:koalaman/shellcheck"]
+version = "latest"
+os = ["linux", "macos"]
 
 #### Tasks ####
 
