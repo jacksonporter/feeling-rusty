@@ -23,6 +23,9 @@ prek = "latest"
 "pipx:checkov" = "latest"
 hadolint = "latest"
 actionlint = "latest"
+ruby = "latest"
+swift = "latest"
+kotlin = "latest"
 
 [tools."github:koalaman/shellcheck"]
 version = "latest"

@@ -219,3 +219,173 @@ jobs:
           name: package-python-${{ matrix.platform_id }}
           path: languages/python/dist/
           retention-days: 3
+
+  package-kotlin:
+    name: Package Kotlin
+    needs: bindings
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: Download Kotlin bindings
+        id: bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-kotlin
+
+      - name: Download all libraries
+        id: libs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: lib-*
+          merge-multiple: true
+
+      - name: Assemble package
+        shell: bash
+        run: |
+          BINDINGS_DIR="${DOWNLOAD_PATH:?}"
+          LIBS_DIR="${LIBS_DOWNLOAD_PATH:?}"
+          KOTLIN_DIR="languages/kotlin"
+          KOTLIN_SRC="$KOTLIN_DIR/src/main/kotlin"
+          KOTLIN_RESOURCES="$KOTLIN_DIR/src/main/resources"
+          rm -rf "${KOTLIN_SRC:?}"/*
+          (cd "$BINDINGS_DIR" && tar cf - .) | (cd "$KOTLIN_SRC" && tar xf -)
+          # platform_id -> JNA resource path (classpath location for native libs)
+          for platform_dir in "$LIBS_DIR"/lib-*; do
+            [ -d "$platform_dir" ] || continue
+            platform_id="${platform_dir##*/lib-}"
+            case "$platform_id" in
+              darwin-x86_64)  jna_path="darwin-x86-64" ;;
+              darwin-arm64)   jna_path="darwin-aarch64" ;;
+              linux-x86_64)   jna_path="linux-x86-64" ;;
+              linux-arm64)    jna_path="linux-aarch64" ;;
+              windows-x86_64) jna_path="win32-x86-64" ;;
+              windows-arm64)  jna_path="win32-aarch64" ;;
+              *) echo "::warning::Unknown platform_id $platform_id, skipping" ; continue ;;
+            esac
+            dest="$KOTLIN_RESOURCES/$jna_path"
+            mkdir -p "$dest"
+            lib_file=$(find "$platform_dir" -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) | head -1)
+            [ -n "$lib_file" ] && cp "$lib_file" "$dest/"
+          done
+        env:
+          DOWNLOAD_PATH: ${{ steps.bindings.outputs.download-path }}
+          LIBS_DOWNLOAD_PATH: ${{ steps.libs.outputs.download-path }}
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Kotlin package
+        run: gradle build
+        working-directory: languages/kotlin
+
+      - name: Upload Kotlin package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-kotlin
+          path: languages/kotlin/build/libs/
+          retention-days: 3
+
+  package-swift:
+    name: Package Swift
+    needs: bindings
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download Swift bindings
+        id: bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-swift
+
+      - name: Assemble package
+        shell: bash
+        run: |
+          BINDINGS_DIR="${{ steps.bindings.outputs.download-path }}"
+          SWIFT_SRC="languages/swift/Sources/FeelingRusty"
+          SWIFT_FFI="languages/swift/Sources/FeelingRustyFFI"
+          mkdir -p "$SWIFT_SRC" "$SWIFT_FFI"
+          cp "$BINDINGS_DIR"/*.swift "$SWIFT_SRC/"
+          cp "$BINDINGS_DIR"/*.h "$SWIFT_FFI/"
+          cp "$BINDINGS_DIR"/*.modulemap "$SWIFT_FFI/module.modulemap"
+
+      - name: Upload Swift package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-swift
+          path: languages/swift/
+          retention-days: 3
+
+  package-ruby:
+    name: Package Ruby (${{ matrix.platform_id }})
+    needs: bindings
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform_id: darwin-x86_64
+            runner: macos-15-intel
+            lib_name: libfeeling_rusty.dylib
+          - platform_id: darwin-arm64
+            runner: macos-14
+            lib_name: libfeeling_rusty.dylib
+          - platform_id: linux-x86_64
+            runner: ubuntu-22.04
+            lib_name: libfeeling_rusty.so
+          - platform_id: linux-arm64
+            runner: ubuntu-24.04-arm
+            lib_name: libfeeling_rusty.so
+          - platform_id: windows-x86_64
+            runner: windows-latest
+            lib_name: feeling_rusty.dll
+          - platform_id: windows-arm64
+            runner: windows-11-arm
+            lib_name: feeling_rusty.dll
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: Download Ruby bindings
+        id: bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-ruby
+
+      - name: Download library (${{ matrix.platform_id }})
+        id: lib
+        uses: actions/download-artifact@v4
+        with:
+          name: lib-${{ matrix.platform_id }}
+
+      - name: Assemble package
+        shell: bash
+        run: |
+          BINDINGS_DIR="${{ steps.bindings.outputs.download-path }}"
+          LIB_DIR="${{ steps.lib.outputs.download-path }}"
+          PKG_DIR="languages/ruby/lib"
+          cp "$BINDINGS_DIR"/feeling_rusty.rb "$PKG_DIR/"
+          LIB_FILE=$(find "$LIB_DIR" -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) | head -1)
+          cp "$LIB_FILE" "$PKG_DIR/${{ matrix.lib_name }}"
+
+      - name: Patch ffi_lib to load from gem lib
+        shell: bash
+        working-directory: languages/ruby
+        run: |
+          ruby -i -pe "gsub(/ffi_lib 'feeling_rusty'/, \"ffi_lib File.join(__dir__, '${{ matrix.lib_name }}')\")" lib/feeling_rusty.rb
+
+      - name: Build Ruby gem
+        shell: bash
+        working-directory: languages/ruby
+        run: gem build feeling_rusty.gemspec
+
+      - name: Upload Ruby package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-ruby-${{ matrix.platform_id }}
+          path: languages/ruby/*.gem
+          retention-days: 3
