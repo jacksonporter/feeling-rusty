@@ -18,7 +18,7 @@ python = "3.14"
 uv = "latest"
 node = "latest"
 bun = "latest"
-rust = { version = "1.93", profile = "minimal", components = "rustfmt,clippy" }
+rust = { version = "1.93", profile = "default" }
 prek = "latest"
 "pipx:checkov" = "latest"
 "github:koalaman/shellcheck" = "latest"
