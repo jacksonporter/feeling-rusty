@@ -75,7 +75,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/${{ matrix.lib_file }}" staging/
 
       - name: Upload library artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: lib-${{ matrix.platform_id }}
           path: staging/
@@ -101,7 +101,7 @@ jobs:
         run: cargo build --release --bin uniffi-bindgen --features cli
 
       - name: Upload uniffi-bindgen binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: uniffi-bindgen-binary
           path: target/release/uniffi-bindgen
@@ -156,7 +156,7 @@ jobs:
             --out-dir out
 
       - name: Upload bindings artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bindings-${{ matrix.language }}
           path: out/
@@ -214,7 +214,7 @@ jobs:
         working-directory: languages/python
 
       - name: Upload Python package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: package-python-${{ matrix.platform_id }}
           path: languages/python/dist/
@@ -282,7 +282,7 @@ jobs:
         working-directory: languages/kotlin
 
       - name: Upload Kotlin package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: package-kotlin
           path: languages/kotlin/build/libs/
@@ -313,7 +313,7 @@ jobs:
           cp "$BINDINGS_DIR"/*.modulemap "$SWIFT_FFI/module.modulemap"
 
       - name: Upload Swift package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: package-swift
           path: languages/swift/
@@ -384,7 +384,7 @@ jobs:
         run: gem build feeling_rusty.gemspec
 
       - name: Upload Ruby package artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: package-ruby-${{ matrix.platform_id }}
           path: languages/ruby/*.gem
