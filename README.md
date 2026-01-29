@@ -93,3 +93,46 @@ Bindings go to `out/<platform>/`. Tasks use Kotlin by default; edit the task in
 
 Cross-compiling to another OS (e.g. Linux from macOS) may require a target
 linker or CI runners; running each task on its native OS is most reliable.
+
+### CI: GitHub Actions
+
+The [UniFFI bindings](.github/workflows/bindings.yml) workflow builds libraries
+and bindings for all OS/chipset/language combinations. After a run completes:
+
+- **Artifacts:** Actions → your run → **Artifacts**. You get:
+  - `lib-<platform>` — the native library per OS/arch (e.g. `lib-darwin-arm64`)
+  - `bindings-<language>` — generated wrapper code (e.g. `bindings-kotlin`);
+      the code is the same for all platforms; only the native lib changes
+
+Download the bindings artifact for your language (one per language), and the
+library artifact(s) for each platform you ship (e.g. macOS + Windows).
+
+## Using the bindings
+
+1. **Add the generated code** to your app (Kotlin/Swift/Python/Ruby). Copy the
+   files from the bindings output (or from a CI artifact) into your project.
+
+2. **Ship the native library** with your app. At runtime the bindings load the
+   `.dylib` / `.so` / `.dll` for the current platform. Bundle the right library
+   per target (e.g. from `lib-darwin-arm64`, `lib-windows-x86_64`).
+
+3. **Wire it up** per language:
+    - **Kotlin:** Add the generated `.kt` and the native lib; see [UniFFI
+      Kotlin](https://mozilla.github.io/uniffi-rs/latest/kotlin/).
+    - **Swift:** Add the generated `.swift` and the framework/dylib; see
+      [UniFFI Swift](https://mozilla.github.io/uniffi-rs/latest/swift/).
+    - **Python:** Use the generated module and ensure the library is on
+      `LD_LIBRARY_PATH` or next to the module; see [UniFFI
+      Python](https://mozilla.github.io/uniffi-rs/latest/python/).
+    - **Ruby:** Similarly, require the generated code and load the native lib;
+      see [UniFFI Ruby](https://mozilla.github.io/uniffi-rs/latest/ruby/).
+
+**Optional next steps:**
+
+- **Releases:** Add a job (or workflow) that runs on tag push and uploads
+  `lib-*` and `bindings-*` artifacts to a [GitHub
+  Release](https://docs.github.com/en/actions/creating-actions/creating-a-release-with-actions)
+  so consumers can download them by version.
+- **Packages:** Publish the bindings + library to your language’s package
+  registry (e.g. PyPI, Maven, Swift Package Manager, RubyGems) using that
+  language’s packaging docs and the generated artifacts.

@@ -1,0 +1,10 @@
+# Markdown is formatted by markdownlint to avoid race with prettier
+*.md
+
+# Workflows are linted by actionlint; avoid both changing the same files
+.github/workflows/
+
+# Lock files are generated; do not format
+Cargo.lock
+bun.lock
+package-lock.json

@@ -79,6 +79,7 @@ jobs:
         with:
           name: lib-${{ matrix.platform_id }}
           path: staging/
+          retention-days: 3
 
   build-bindgen:
     name: Build uniffi-bindgen
@@ -104,26 +105,16 @@ jobs:
         with:
           name: uniffi-bindgen-binary
           path: target/release/uniffi-bindgen
+          retention-days: 3
 
   bindings:
-    name: Bindings ${{ matrix.platform_id }} (${{ matrix.language }})
+    name: Bindings (${{ matrix.language }})
     needs: [build-libs, build-bindgen]
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
-        platform_id:
-          - darwin-x86_64
-          - darwin-arm64
-          - linux-x86_64
-          - linux-arm64
-          - windows-x86_64
-          - windows-arm64
-        language:
-          - kotlin
-          - swift
-          - python
-          - ruby
+        language: [kotlin, swift, python, ruby]
     steps:
       - uses: actions/checkout@v6
 
@@ -132,18 +123,19 @@ jobs:
         with:
           name: uniffi-bindgen-binary
 
-      - name: Locate and run uniffi-bindgen
+      - name: Locate bindgen binary
         id: bindgen
         run: |
           BINDGEN=$(find . -name uniffi-bindgen -type f | head -1)
           chmod +x "$BINDGEN"
           echo "path=$BINDGEN" >> "$GITHUB_OUTPUT"
 
-      - name: Download library artifact
+      # Any one library has the same embedded API metadata; we only need it to run bindgen
+      - name: Download library artifact (any platform)
         id: download-lib
         uses: actions/download-artifact@v4
         with:
-          name: lib-${{ matrix.platform_id }}
+          name: lib-linux-x86_64
 
       - name: Detect library path
         id: lib
@@ -166,5 +158,64 @@ jobs:
       - name: Upload bindings artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bindings-${{ matrix.platform_id }}-${{ matrix.language }}
+          name: bindings-${{ matrix.language }}
           path: out/
+          retention-days: 3
+
+  package-python:
+    name: Package Python (${{ matrix.platform_id }})
+    needs: bindings
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform_id: darwin-x86_64
+            runner: macos-15-intel
+          - platform_id: darwin-arm64
+            runner: macos-14
+          - platform_id: linux-x86_64
+            runner: ubuntu-22.04
+          - platform_id: linux-arm64
+            runner: ubuntu-24.04-arm
+          - platform_id: windows-x86_64
+            runner: windows-latest
+          - platform_id: windows-arm64
+            runner: windows-11-arm
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - name: Download Python bindings
+        id: bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-python
+
+      - name: Download library (${{ matrix.platform_id }})
+        id: lib
+        uses: actions/download-artifact@v4
+        with:
+          name: lib-${{ matrix.platform_id }}
+
+      - name: Assemble package
+        shell: bash
+        run: |
+          BINDINGS_DIR="${{ steps.bindings.outputs.download-path }}"
+          LIB_DIR="${{ steps.lib.outputs.download-path }}"
+          PKG_DIR="languages/python/src/feeling_rusty"
+          cp "$BINDINGS_DIR"/*.py "$PKG_DIR/"
+          LIB_FILE=$(find "$LIB_DIR" -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) | head -1)
+          cp "$LIB_FILE" "$PKG_DIR/"
+
+      - name: Build Python package
+        run: uv build
+        working-directory: languages/python
+
+      - name: Upload Python package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-python-${{ matrix.platform_id }}
+          path: languages/python/dist/
+          retention-days: 3

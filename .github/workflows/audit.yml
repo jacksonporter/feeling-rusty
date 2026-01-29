@@ -23,4 +23,4 @@ jobs:
       - run: mise run setup
       - run: mise run lint
         env:
-          SKIP: "no-commit-to-branch"
+          SKIP: 'no-commit-to-branch'

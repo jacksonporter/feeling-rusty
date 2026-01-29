@@ -54,8 +54,8 @@ repos:
           - run
           - prettier-write-all
         language: system
-        files: '\.(js|jsx|ts|tsx|json|css|scss|html|md|yaml|yml)$'
-        pass_filenames: true
+        always_run: true
+        pass_filenames: false
       - id: markdownlint
         name: markdownlint
         entry: mise
@@ -72,7 +72,7 @@ repos:
           - run
           - hadolint
         language: system
-        files: "(Dockerfile|Containerfile)$"
+        files: '(Dockerfile|Containerfile)$'
         pass_filenames: true
       - id: actionlint
         name: actionlint

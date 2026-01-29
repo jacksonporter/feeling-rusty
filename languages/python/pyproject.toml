@@ -1,0 +1,18 @@
+[project]
+name = "feeling-rusty"
+version = "0.1.0"
+description = "Python bindings for feeling-rusty (UniFFI)"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Include native libs (copied in by CI) in the wheel
+only-include = ["src/feeling_rusty"]
