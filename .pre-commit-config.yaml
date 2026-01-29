@@ -64,7 +64,7 @@ repos:
           - markdownlint-fix-all
         language: system
         files: '\.md$'
-        pass_filenames: true
+        pass_filenames: false
       - id: hadolint
         name: hadolint
         entry: mise

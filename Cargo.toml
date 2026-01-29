@@ -3,4 +3,17 @@ name = "feeling-rusty"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+
+[features]
+default = []
+cli = ["uniffi/cli"]
+
 [dependencies]
+thiserror = "2"
+uniffi = { version = "0.31" }

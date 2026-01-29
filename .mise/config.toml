@@ -84,3 +84,101 @@ depends = ["rust-fmt-all", "prettier-write-all"]
 
 [tasks.lint]
 run = "prek run -a"
+
+#### UniFFI: build native libraries first, generate language bindings later ####
+
+# Build only: produce .dylib / .so / .dll for each target (no bindgen)
+[tasks.build-darwin-x86_64]
+description = "Build cdylib for macOS x86_64 (Intel)"
+run = [
+  "rustup target add x86_64-apple-darwin",
+  "cargo build --release --target x86_64-apple-darwin",
+]
+
+[tasks.build-darwin-arm64]
+description = "Build cdylib for macOS arm64 (Apple Silicon)"
+run = [
+  "rustup target add aarch64-apple-darwin",
+  "cargo build --release --target aarch64-apple-darwin",
+]
+
+[tasks.build-linux-x86_64]
+description = "Build cdylib for Linux x86_64"
+run = [
+  "rustup target add x86_64-unknown-linux-gnu",
+  "cargo build --release --target x86_64-unknown-linux-gnu",
+]
+
+[tasks.build-linux-arm64]
+description = "Build cdylib for Linux arm64"
+run = [
+  "rustup target add aarch64-unknown-linux-gnu",
+  "cargo build --release --target aarch64-unknown-linux-gnu",
+]
+
+[tasks.build-windows-x86_64]
+description = "Build cdylib for Windows x86_64"
+run = [
+  "rustup target add x86_64-pc-windows-msvc",
+  "cargo build --release --target x86_64-pc-windows-msvc",
+]
+
+[tasks.build-windows-arm64]
+description = "Build cdylib for Windows arm64"
+run = [
+  "rustup target add aarch64-pc-windows-msvc",
+  "cargo build --release --target aarch64-pc-windows-msvc",
+]
+
+[tasks.build-all]
+description = "Build cdylibs for all OSes and chipsets (no language bindings)"
+depends = [
+  "build-darwin-x86_64",
+  "build-darwin-arm64",
+  "build-linux-x86_64",
+  "build-linux-arm64",
+  "build-windows-x86_64",
+  "build-windows-arm64",
+]
+
+# Bindings only: run bindgen against an already-built library (run build-* first)
+[tasks.bindings-darwin-x86_64]
+description = "Generate bindings from macOS x86_64 library (run build-darwin-x86_64 first)"
+depends = ["build-darwin-x86_64"]
+run = "cargo run --features=cli --bin uniffi-bindgen generate --library target/x86_64-apple-darwin/release/libfeeling_rusty.dylib --language kotlin --out-dir out/darwin-x86_64"
+
+[tasks.bindings-darwin-arm64]
+description = "Generate bindings from macOS arm64 library (run build-darwin-arm64 first)"
+depends = ["build-darwin-arm64"]
+run = "cargo run --features=cli --bin uniffi-bindgen generate --library target/aarch64-apple-darwin/release/libfeeling_rusty.dylib --language kotlin --out-dir out/darwin-arm64"
+
+[tasks.bindings-linux-x86_64]
+description = "Generate bindings from Linux x86_64 library (run build-linux-x86_64 first)"
+depends = ["build-linux-x86_64"]
+run = "cargo run --features=cli --bin uniffi-bindgen generate --library target/x86_64-unknown-linux-gnu/release/libfeeling_rusty.so --language kotlin --out-dir out/linux-x86_64"
+
+[tasks.bindings-linux-arm64]
+description = "Generate bindings from Linux arm64 library (run build-linux-arm64 first)"
+depends = ["build-linux-arm64"]
+run = "cargo run --features=cli --bin uniffi-bindgen generate --library target/aarch64-unknown-linux-gnu/release/libfeeling_rusty.so --language kotlin --out-dir out/linux-arm64"
+
+[tasks.bindings-windows-x86_64]
+description = "Generate bindings from Windows x86_64 library (run build-windows-x86_64 first)"
+depends = ["build-windows-x86_64"]
+run = "cargo run --features=cli --bin uniffi-bindgen generate --library target/x86_64-pc-windows-msvc/release/feeling_rusty.dll --language kotlin --out-dir out/windows-x86_64"
+
+[tasks.bindings-windows-arm64]
+description = "Generate bindings from Windows arm64 library (run build-windows-arm64 first)"
+depends = ["build-windows-arm64"]
+run = "cargo run --features=cli --bin uniffi-bindgen generate --library target/aarch64-pc-windows-msvc/release/feeling_rusty.dll --language kotlin --out-dir out/windows-arm64"
+
+[tasks.bindings-all]
+description = "Generate bindings for all targets (builds libraries first, then bindgen)"
+depends = [
+  "bindings-darwin-x86_64",
+  "bindings-darwin-arm64",
+  "bindings-linux-x86_64",
+  "bindings-linux-arm64",
+  "bindings-windows-x86_64",
+  "bindings-windows-arm64",
+]

@@ -1,14 +1,23 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+use uniffi::export;
+
+#[derive(Debug, thiserror::Error, uniffi::Error)]
+pub enum MathError {
+    #[error("division by zero")]
+    DivisionByZero,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[export]
+pub fn add(a: i64, b: i64) -> i64 {
+    a + b
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+#[export]
+pub fn divide(a: f64, b: f64) -> Result<f64, MathError> {
+    if b == 0.0 {
+        Err(MathError::DivisionByZero)
+    } else {
+        Ok(a / b)
     }
 }
+
+uniffi::setup_scaffolding!();

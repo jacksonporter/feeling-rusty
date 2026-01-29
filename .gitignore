@@ -30,6 +30,9 @@ node_modules/
 /target
 
 
+# UniFFI generated bindings (optional; remove if you commit them)
+/out
+
 # Added by cargo
 #
 # already existing elements were commented out

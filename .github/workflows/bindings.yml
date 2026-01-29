@@ -1,0 +1,140 @@
+name: UniFFI bindings
+
+run-name: Build libraries and generate bindings
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  MISE_ENV: ci
+
+jobs:
+  build-libs:
+    name: Build lib (${{ matrix.platform_id }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform_id: darwin-x86_64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            lib_file: libfeeling_rusty.dylib
+          - platform_id: darwin-arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+            lib_file: libfeeling_rusty.dylib
+          - platform_id: linux-x86_64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            lib_file: libfeeling_rusty.so
+          - platform_id: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            lib_file: libfeeling_rusty.so
+          - platform_id: windows-x86_64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            lib_file: feeling_rusty.dll
+          - platform_id: windows-arm64
+            runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            lib_file: feeling_rusty.dll
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-${{ matrix.platform_id }}-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release cdylib
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Copy library to staging
+        shell: bash
+        run: |
+          mkdir -p staging
+          cp "target/${{ matrix.target }}/release/${{ matrix.lib_file }}" staging/
+
+      - name: Upload library artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib-${{ matrix.platform_id }}
+          path: staging/
+
+  bindings:
+    name: Bindings ${{ matrix.platform_id }} (${{ matrix.language }})
+    needs: build-libs
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        platform_id:
+          - darwin-x86_64
+          - darwin-arm64
+          - linux-x86_64
+          - linux-arm64
+          - windows-x86_64
+          - windows-arm64
+        language:
+          - kotlin
+          - swift
+          - python
+          - ruby
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-bindings-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Download library artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: lib-${{ matrix.platform_id }}
+
+      - name: Detect library path
+        id: lib
+        run: |
+          LIB_PATH=$(find lib-${{ matrix.platform_id }} -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) | head -1)
+          echo "path=$LIB_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Build uniffi-bindgen
+        run: cargo build --bin uniffi-bindgen --features cli
+
+      - name: Generate bindings
+        run: |
+          cargo run --features=cli --bin uniffi-bindgen -- generate \
+            --library "${{ steps.lib.outputs.path }}" \
+            --language ${{ matrix.language }} \
+            --out-dir out
+
+      - name: Upload bindings artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.platform_id }}-${{ matrix.language }}
+          path: out/
