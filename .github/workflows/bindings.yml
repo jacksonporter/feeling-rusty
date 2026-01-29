@@ -80,9 +80,34 @@ jobs:
           name: lib-${{ matrix.platform_id }}
           path: staging/
 
+  build-bindgen:
+    name: Build uniffi-bindgen
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: jdx/mise-action@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-${{ runner.os }}-bindgen-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build uniffi-bindgen binary
+        run: cargo build --release --bin uniffi-bindgen --features cli
+
+      - name: Upload uniffi-bindgen binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: uniffi-bindgen-binary
+          path: target/release/uniffi-bindgen
+
   bindings:
     name: Bindings ${{ matrix.platform_id }} (${{ matrix.language }})
-    needs: build-libs
+    needs: [build-libs, build-bindgen]
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
@@ -102,17 +127,20 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: jdx/mise-action@v3
-
-      - uses: actions/cache@v4
+      - name: Download uniffi-bindgen binary
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: cargo-${{ runner.os }}-bindings-${{ hashFiles('**/Cargo.lock') }}
+          name: uniffi-bindgen-binary
+
+      - name: Locate and run uniffi-bindgen
+        id: bindgen
+        run: |
+          BINDGEN=$(find . -name uniffi-bindgen -type f | head -1)
+          chmod +x "$BINDGEN"
+          echo "path=$BINDGEN" >> "$GITHUB_OUTPUT"
 
       - name: Download library artifact
+        id: download-lib
         uses: actions/download-artifact@v4
         with:
           name: lib-${{ matrix.platform_id }}
@@ -120,15 +148,17 @@ jobs:
       - name: Detect library path
         id: lib
         run: |
-          LIB_PATH=$(find lib-${{ matrix.platform_id }} -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) | head -1)
+          LIB_DIR="${{ steps.download-lib.outputs.download-path }}"
+          LIB_PATH=$(find "$LIB_DIR" -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) | head -1)
+          if [ -z "$LIB_PATH" ]; then
+            echo "::error::No library file found in $LIB_DIR"
+            exit 1
+          fi
           echo "path=$LIB_PATH" >> "$GITHUB_OUTPUT"
-
-      - name: Build uniffi-bindgen
-        run: cargo build --bin uniffi-bindgen --features cli
 
       - name: Generate bindings
         run: |
-          cargo run --features=cli --bin uniffi-bindgen -- generate \
+          "${{ steps.bindgen.outputs.path }}" generate \
             --library "${{ steps.lib.outputs.path }}" \
             --language ${{ matrix.language }} \
             --out-dir out
